@@ -1,4 +1,5 @@
 const resultDiv = document.getElementById('result');
+const mapContainer = document.getElementById('map-container');
 const dataUrl = "https://mass-shooting-tracker-data.s3.us-east-2.amazonaws.com/2024-data.json";
 
 function formatDate(dateString) {
@@ -35,6 +36,28 @@ function getNextDay(dateString) {
     const date = new Date(dateString + 'T00:00:00Z');
     date.setUTCDate(date.getUTCDate() + 1);
     return date.toISOString().split('T')[0];
+}
+
+
+function initTabs() {
+    const tabs = document.querySelectorAll('.tab-item');
+    const contents = document.querySelectorAll('.tab-content');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const target = tab.dataset.tab;
+
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            contents.forEach(content => {
+                content.classList.remove('active');
+                if (content.id === target) {
+                    content.classList.add('active');
+                }
+            });
+        });
+    });
 }
 
 async function fetchData() {
@@ -151,11 +174,11 @@ function displayData(shootings) {
                 <p>${totalShootings}</p>
             </div>
             <div class="stat-card">
-                <h3>Total People Killed</h3>
+                <h3>Total People Killed (2024)</h3>
                 <p>${totalKilled}</p>
             </div>
             <div class="stat-card">
-                <h3>Total People Injured</h3>
+                <h3>Total People Injured (2024)</h3>
                 <p>${totalWounded}</p>
             </div>
             <div class="stat-card">
@@ -195,4 +218,7 @@ function displayData(shootings) {
     `;
 }
 
-fetchData();
+document.addEventListener('DOMContentLoaded', () => {
+    initTabs();
+    fetchData();
+});

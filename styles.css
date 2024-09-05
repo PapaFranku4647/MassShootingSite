@@ -7,6 +7,7 @@ body {
     background-color: #f5f5f5;
 }
 
+
 header {
     background-color: #2c3e50;
     color: #fff;
@@ -19,8 +20,62 @@ h1 {
     font-size: 1.5rem;
 }
 
+nav {
+    background-color: #34495e;
+}
+
+.tabs {
+    display: flex;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.tab-item {
+    flex: 1;
+    text-align: center;
+    padding: 0.75rem;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.tab-item:hover {
+    background-color: #2c3e50;
+}
+
+.tab-item.active {
+    background-color: #2c3e50;
+}
+
 main {
     padding: 1rem;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+#map-container {
+    width: 100%;
+    max-width: 1000px; 
+    margin: 0 auto;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+#usa-map {
+    width: 100%;
+    height: auto;
+    display: block;
 }
 
 .statistics {
@@ -145,6 +200,14 @@ footer a:hover {
 
     h1 {
         font-size: 1.3rem;
+    }
+
+    .tab-item {
+        padding: 0.5rem;
+    }
+
+    #map-container {
+        border-radius: 0; /* Remove border-radius on small screens */
     }
 
     .statistics {

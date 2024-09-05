@@ -12,10 +12,27 @@
     <header>
         <h1>Mass Shooting Data Viewer</h1>
     </header>
+    <nav>
+        <ul class="tabs">
+            <li class="tab-item active" data-tab="statistics">Statistics</li>
+            <li class="tab-item" data-tab="heatmap">Heatmap</li>
+        </ul>
+    </nav>
     <main>
-        <section id="result">
-            <div class="loading">Loading data...</div>
-        </section>
+        <main>
+            <section id="statistics" class="tab-content active">
+                <div id="result">
+                    <div class="loading">Loading data...</div>
+                </div>
+            </section>
+            <section id="heatmap" class="tab-content">
+                <div id="map-container">
+                    <svg id="usa-map" viewBox="0 0 1000 635" preserveAspectRatio="xMidYMid meet">
+                        <image href="usa.svg" width="1182" height="635" />
+                    </svg>
+                </div>
+            </section>
+        </main>
     </main>
     <footer>
         <p>Data source: <a href="https://massshootingtracker.site" target="_blank">Mass Shooting Tracker</a></p>
