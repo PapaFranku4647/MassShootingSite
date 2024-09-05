@@ -13,19 +13,27 @@ function formatDate(dateString) {
     return date.toISOString().split('T')[0];
 }
 
+function formatDateForDisplay(dateString) {
+    // Parse the date string and adjust for UTC
+    const date = new Date(dateString + 'T00:00:00Z');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${date.getUTCDate().toString().padStart(2, '0')}-${months[date.getUTCMonth()]}-${date.getUTCFullYear()}`;
+}
+
 function getToday() {
-    return new Date().toISOString().split('T')[0];
+    const today = new Date();
+    return formatDateForDisplay(today.toISOString().split('T')[0]);
 }
 
 function getPreviousDay(dateString) {
-    const date = new Date(dateString);
-    date.setDate(date.getDate() - 1);
+    const date = new Date(dateString + 'T00:00:00Z');
+    date.setUTCDate(date.getUTCDate() - 1);
     return date.toISOString().split('T')[0];
 }
 
 function getNextDay(dateString) {
-    const date = new Date(dateString);
-    date.setDate(date.getDate() + 1);
+    const date = new Date(dateString + 'T00:00:00Z');
+    date.setUTCDate(date.getUTCDate() + 1);
     return date.toISOString().split('T')[0];
 }
 
@@ -71,6 +79,33 @@ function findLongestStreak(sortedDates) {
     return { longestStreak, longestStreakStart, longestStreakEnd };
 }
 
+
+function findDayWithMostShootings(shootings) {
+    const shootingsByDate = {};
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    shootings.forEach(shooting => {
+        const date = formatDate(shooting.date);
+        if (new Date(date) >= oneYearAgo) {
+            shootingsByDate[date] = (shootingsByDate[date] || 0) + 1;
+        }
+    });
+
+    let maxShootingsDate = null;
+    let maxShootings = 0;
+
+    for (const [date, count] of Object.entries(shootingsByDate)) {
+        if (count > maxShootings) {
+            maxShootings = count;
+            maxShootingsDate = date;
+        }
+    }
+
+    return { date: maxShootingsDate, count: maxShootings };
+}
+
+
 function displayData(shootings) {
     const uniqueDates = new Set(shootings.map(shooting => formatDate(shooting.date)));
     const sortedDates = Array.from(uniqueDates).sort((a, b) => new Date(b) - new Date(a));
@@ -96,41 +131,67 @@ function displayData(shootings) {
     const uniqueConsecutiveDays = [...new Set(consecutiveDays)];
     const currentStreakCount = uniqueConsecutiveDays.length;
 
+    // Format the streak date range
+    const streakDateRange = currentStreakCount > 1
+        ? `(${formatDateForDisplay(uniqueConsecutiveDays[uniqueConsecutiveDays.length - 1])} to ${formatDateForDisplay(uniqueConsecutiveDays[0])})`
+        : `(${formatDateForDisplay(uniqueConsecutiveDays[0])})`;
+
     // Longest streak in the past year calculation
     const oneYearAgo = new Date();
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     const pastYearDates = sortedDates.filter(date => new Date(date) >= oneYearAgo);
     const { longestStreak, longestStreakStart, longestStreakEnd } = findLongestStreak(pastYearDates);
 
+    const { date: worstDay, count: worstDayCount } = findDayWithMostShootings(shootings);
+
     resultDiv.innerHTML = `
-        <h2>Statistics as of ${getToday()}</h2>
-        <p>Total mass shootings in 2024: <strong>${totalShootings}</strong></p>
-        <p>Total people killed: <strong>${totalKilled}</strong></p>
-        <p>Total people injured: <strong>${totalWounded}</strong></p>
-        <p class="current-streak">Current streak of consecutive days with mass shootings: ${currentStreakCount}</p>
-        <p>Consecutive days with shootings: ${uniqueConsecutiveDays.join(', ')}</p>
-        <p class="longest-streak">Longest streak in the past year: <strong>${longestStreak} days</strong></p>
-        <p>Date range of longest streak: ${longestStreakStart} to ${longestStreakEnd}</p>
+        <div class="statistics">
+            <div class="stat-card">
+                <h3>Total Mass Shootings in 2024</h3>
+                <p>${totalShootings}</p>
+            </div>
+            <div class="stat-card">
+                <h3>Total People Killed</h3>
+                <p>${totalKilled}</p>
+            </div>
+            <div class="stat-card">
+                <h3>Total People Injured</h3>
+                <p>${totalWounded}</p>
+            </div>
+            <div class="stat-card">
+                <h3>Day with Most Shootings</h3>
+                <p>${formatDateForDisplay(worstDay)}</p>
+                <p class="subtext">${worstDayCount} shootings</p>
+            </div>
+        </div>
+        <p class="current-streak">Current streak: <span class="streak-highlight">${currentStreakCount} day${currentStreakCount !== 1 ? 's' : ''}</span> with mass shootings ${streakDateRange}</p>
+        <p class="longest-streak">Longest streak in the past year: <span class="streak-highlight">${longestStreak} days</span> (${formatDateForDisplay(longestStreakEnd)} to ${formatDateForDisplay(longestStreakStart)})</p>
         
         <h2>Latest Incidents</h2>
-        <table>
-            <tr>
-                <th>Date</th>
-                <th>City</th>
-                <th>State</th>
-                <th>Killed</th>
-                <th>Injured</th>
-            </tr>
-            ${shootings.slice(0, 10).map(shooting => `
-                <tr>
-                    <td>${formatDate(shooting.date)}</td>
-                    <td>${shooting.city}</td>
-                    <td>${shooting.state}</td>
-                    <td>${shooting.killed || '0'}</td>
-                    <td>${shooting.wounded || '0'}</td>
-                </tr>
-            `).join('')}
-        </table>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>City</th>
+                        <th>State</th>
+                        <th>Killed</th>
+                        <th>Injured</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${shootings.slice(0, 10).map(shooting => `
+                        <tr>
+                            <td>${formatDateForDisplay(formatDate(shooting.date))}</td>
+                            <td>${shooting.city}</td>
+                            <td>${shooting.state}</td>
+                            <td>${shooting.killed || '0'}</td>
+                            <td>${shooting.wounded || '0'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
     `;
 }
 
