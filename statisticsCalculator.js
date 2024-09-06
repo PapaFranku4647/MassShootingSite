@@ -1,59 +1,74 @@
 import { formatDate, getPreviousDay } from './dateUtils.js';
 
-export function findLongestStreak(sortedDates) {
+export function findLongestStreak(dates) {
     let longestStreak = 0;
     let currentStreak = 0;
     let streakStart = null;
+    let streakEnd = null;
     let longestStreakStart = null;
     let longestStreakEnd = null;
 
-    for (let i = 0; i < sortedDates.length; i++) {
-        if (i === 0 || sortedDates[i] === getPreviousDay(sortedDates[i-1])) {
-            if (currentStreak === 0) streakStart = sortedDates[i];
+    for (let i = 0; i < dates.length; i++) {
+        const currentDate = dates[i];
+        const previousDate = i > 0 ? dates[i - 1] : null;
+
+        if (previousDate && currentDate === getPreviousDay(previousDate)) {
             currentStreak++;
+            if (currentStreak === 1) {
+                streakStart = previousDate;
+            }
+            streakEnd = currentDate;
+        } else {
             if (currentStreak > longestStreak) {
                 longestStreak = currentStreak;
                 longestStreakStart = streakStart;
-                longestStreakEnd = sortedDates[i];
+                longestStreakEnd = streakEnd;
             }
-        } else {
             currentStreak = 1;
-            streakStart = sortedDates[i];
+            streakStart = currentDate;
+            streakEnd = currentDate;
         }
     }
 
-    return { longestStreak, longestStreakStart, longestStreakEnd };
+    if (currentStreak > longestStreak) {
+        longestStreak = currentStreak;
+        longestStreakStart = streakStart;
+        longestStreakEnd = streakEnd;
+    }
+
+    return {
+        longestStreak,
+        longestStreakStart,
+        longestStreakEnd
+    };
 }
 
 export function findDayWithMostShootings(shootings) {
-    const shootingsByDate = {};
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const shootingCounts = {};
+    let maxCount = 0;
+    let dayWithMost = null;
 
     shootings.forEach(shooting => {
         const date = formatDate(shooting.date);
-        if (new Date(date) >= oneYearAgo) {
-            shootingsByDate[date] = (shootingsByDate[date] || 0) + 1;
+        shootingCounts[date] = (shootingCounts[date] || 0) + 1;
+
+        if (shootingCounts[date] > maxCount) {
+            maxCount = shootingCounts[date];
+            dayWithMost = date;
         }
     });
 
-    let maxShootingsDate = null;
-    let maxShootings = 0;
-
-    for (const [date, count] of Object.entries(shootingsByDate)) {
-        if (count > maxShootings) {
-            maxShootings = count;
-            maxShootingsDate = date;
-        }
-    }
-
-    return { date: maxShootingsDate, count: maxShootings };
+    return {
+        date: dayWithMost,
+        count: maxCount
+    };
 }
 
 export function calculateTotals(shootings) {
-    const totalShootings = shootings.length;
-    const totalKilled = shootings.reduce((sum, shooting) => sum + (parseInt(shooting.killed) || 0), 0);
-    const totalWounded = shootings.reduce((sum, shooting) => sum + (parseInt(shooting.wounded) || 0), 0);
-
-    return { totalShootings, totalKilled, totalWounded };
+    return shootings.reduce((totals, shooting) => {
+        totals.totalShootings++;
+        totals.totalKilled += parseInt(shooting.killed) || 0;
+        totals.totalWounded += parseInt(shooting.wounded) || 0;
+        return totals;
+    }, { totalShootings: 0, totalKilled: 0, totalWounded: 0 });
 }
