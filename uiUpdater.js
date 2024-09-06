@@ -1,45 +1,7 @@
-const resultDiv = document.getElementById('result');
-const mapContainer = document.getElementById('map-container');
-const dataUrl = "https://mass-shooting-tracker-data.s3.us-east-2.amazonaws.com/2024-data.json";
+import { formatDate, formatDateForDisplay, getPreviousDay } from './dateUtils.js';
+import { findLongestStreak, findDayWithMostShootings, calculateTotals } from './statisticsCalculator.js';
 
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-        const parts = dateString.split('/');
-        if (parts.length === 3) {
-            return `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
-        }
-        return 'Invalid Date';
-    }
-    return date.toISOString().split('T')[0];
-}
-
-function formatDateForDisplay(dateString) {
-    // Parse the date string and adjust for UTC
-    const date = new Date(dateString + 'T00:00:00Z');
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${date.getUTCDate().toString().padStart(2, '0')}-${months[date.getUTCMonth()]}-${date.getUTCFullYear()}`;
-}
-
-function getToday() {
-    const today = new Date();
-    return formatDateForDisplay(today.toISOString().split('T')[0]);
-}
-
-function getPreviousDay(dateString) {
-    const date = new Date(dateString + 'T00:00:00Z');
-    date.setUTCDate(date.getUTCDate() - 1);
-    return date.toISOString().split('T')[0];
-}
-
-function getNextDay(dateString) {
-    const date = new Date(dateString + 'T00:00:00Z');
-    date.setUTCDate(date.getUTCDate() + 1);
-    return date.toISOString().split('T')[0];
-}
-
-
-function initTabs() {
+export function initTabs() {
     const tabs = document.querySelectorAll('.tab-item');
     const contents = document.querySelectorAll('.tab-content');
 
@@ -60,82 +22,12 @@ function initTabs() {
     });
 }
 
-async function fetchData() {
-    try {
-        const response = await fetch(dataUrl);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        
-        console.log("Raw JSON data:", data);
-        
-        displayData(data);
-    } catch (error) {
-        resultDiv.innerHTML = `<p class="error">Error fetching or parsing data: ${error.message}</p>`;
-        console.error("Error:", error);
-    }
-}
-
-function findLongestStreak(sortedDates) {
-    let longestStreak = 0;
-    let currentStreak = 0;
-    let streakStart = null;
-    let longestStreakStart = null;
-    let longestStreakEnd = null;
-
-    for (let i = 0; i < sortedDates.length; i++) {
-        if (i === 0 || sortedDates[i] === getPreviousDay(sortedDates[i-1])) {
-            if (currentStreak === 0) streakStart = sortedDates[i];
-            currentStreak++;
-            if (currentStreak > longestStreak) {
-                longestStreak = currentStreak;
-                longestStreakStart = streakStart;
-                longestStreakEnd = sortedDates[i];
-            }
-        } else {
-            currentStreak = 1;
-            streakStart = sortedDates[i];
-        }
-    }
-
-    return { longestStreak, longestStreakStart, longestStreakEnd };
-}
-
-
-function findDayWithMostShootings(shootings) {
-    const shootingsByDate = {};
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-
-    shootings.forEach(shooting => {
-        const date = formatDate(shooting.date);
-        if (new Date(date) >= oneYearAgo) {
-            shootingsByDate[date] = (shootingsByDate[date] || 0) + 1;
-        }
-    });
-
-    let maxShootingsDate = null;
-    let maxShootings = 0;
-
-    for (const [date, count] of Object.entries(shootingsByDate)) {
-        if (count > maxShootings) {
-            maxShootings = count;
-            maxShootingsDate = date;
-        }
-    }
-
-    return { date: maxShootingsDate, count: maxShootings };
-}
-
-
-function displayData(shootings) {
+export function displayData(shootings) {
+    const resultDiv = document.getElementById('result');
     const uniqueDates = new Set(shootings.map(shooting => formatDate(shooting.date)));
     const sortedDates = Array.from(uniqueDates).sort((a, b) => new Date(b) - new Date(a));
 
-    const totalShootings = shootings.length;
-    const totalKilled = shootings.reduce((sum, shooting) => sum + (parseInt(shooting.killed) || 0), 0);
-    const totalWounded = shootings.reduce((sum, shooting) => sum + (parseInt(shooting.wounded) || 0), 0);
+    const { totalShootings, totalKilled, totalWounded } = calculateTotals(shootings);
 
     // Current streak calculation
     let consecutiveDays = [];
@@ -217,8 +109,3 @@ function displayData(shootings) {
         </div>
     `;
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-    initTabs();
-    fetchData();
-});
