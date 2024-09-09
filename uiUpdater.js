@@ -1,7 +1,5 @@
-import { formatDate, formatDateForDisplay, getPreviousDay } from './dateUtils.js';
+import { formatDate, formatDateForDisplay, getPreviousDay, getToday, unformatDisplayedDate } from './dateUtils.js';
 import { findLongestStreak, findDayWithMostShootings, calculateTotals } from './statisticsCalculator.js';
-
-let map, heatmapLayer;
 
 export function initTabs() {
     const tabs = document.querySelectorAll('.tab-item');
@@ -18,79 +16,11 @@ export function initTabs() {
                 content.classList.remove('active');
                 if (content.id === target) {
                     content.classList.add('active');
-                    if (target === 'heatmap') {
-                        setTimeout(() => {
-                            initializeMap();
-                            if (window.shootingsData) {
-                                updateHeatmap(window.shootingsData);
-                            }
-                        }, 100);
-                    }
                 }
             });
         });
     });
 }
-
-function initializeMap() {
-    const container = document.getElementById('heatmapContainer');
-    if (!container) {
-        console.error('Heatmap container not found');
-        return;
-    }
-
-    if (container.clientWidth === 0 || container.clientHeight === 0) {
-        console.warn('Map container has no size. Retrying in 100ms.');
-        setTimeout(initializeMap, 100);
-        return;
-    }
-
-    if (!map) {
-        map = L.map('heatmapContainer').setView([37.8, -96], 4);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
-
-        heatmapLayer = L.heatLayer([], { 
-            radius: 50,  // Increased radius
-            blur: 30,    // Increased blur
-            maxZoom: 10,
-            max: 0.4,    // Reduced max intensity
-            gradient: {0.2: 'blue', 0.4: 'lime', 0.6: 'red'}  // Adjusted gradient
-        }).addTo(map);
-        
-        console.log("Map and heatmap layer initialized");
-    }
-
-    map.invalidateSize();
-}
-
-export function updateHeatmap(shootings) {
-    if (!map || !heatmapLayer) {
-        console.warn('Map or heatmap layer not initialized, initializing now');
-        initializeMap();
-        setTimeout(() => updateHeatmap(shootings), 100);
-        return;
-    }
-
-    const points = (shootings || [])
-        .filter(shooting => shooting.latitude && shooting.longitude)
-        .map(shooting => [
-            parseFloat(shooting.latitude),
-            parseFloat(shooting.longitude),
-            0.5  // Reduced intensity per point
-        ]);
-    
-    console.log(`Updating heatmap with ${points.length} points`);
-    
-    if (points.length > 0) {
-        heatmapLayer.setLatLngs(points);
-        console.log("Heatmap updated successfully");
-    } else {
-        console.log("No valid points to display on the heatmap");
-    }
-}
-
 
 export function displayData(shootings) {
     const resultDiv = document.getElementById('result');
@@ -98,29 +28,39 @@ export function displayData(shootings) {
     const sortedDates = Array.from(uniqueDates).sort((a, b) => new Date(b) - new Date(a));
 
     const { totalShootings, totalKilled, totalWounded } = calculateTotals(shootings);
-    
-    
+
     // Current streak calculation
+    let currentStreakCount;
+    let streakDateRange;
     let consecutiveDays = [];
     let previousDate = sortedDates[0];
+    const today = unformatDisplayedDate(getToday());
+    const yesterday = getPreviousDay(today);
+    console.log(today, yesterday);
 
-    for (let i = 0; i < sortedDates.length; i++) {
-        const currentDate = sortedDates[i];
-        if (i === 0 || currentDate === getPreviousDay(previousDate)) {
-            consecutiveDays.push(currentDate);
-        } else {
-            break;
+    // Check if there are no shootings today and yesterday
+    if (!sortedDates.includes(today) && !sortedDates.includes(yesterday)) {
+        currentStreakCount = 0;
+        streakDateRange = "(No Shootings in last 24 hours)";
+    } else {
+        for (let i = 0; i < sortedDates.length; i++) {
+            const currentDate = sortedDates[i];
+            if (i === 0 || currentDate === getPreviousDay(previousDate)) {
+                consecutiveDays.push(currentDate);
+            } else {
+                break;
+            }
+            previousDate = currentDate;
         }
-        previousDate = currentDate;
+
+        const uniqueConsecutiveDays = [...new Set(consecutiveDays)];
+        currentStreakCount = uniqueConsecutiveDays.length;
+
+        // Format the streak date range
+        streakDateRange = currentStreakCount > 1
+            ? `(${formatDateForDisplay(uniqueConsecutiveDays[uniqueConsecutiveDays.length - 1])} to ${formatDateForDisplay(uniqueConsecutiveDays[0])})`
+            : `(${formatDateForDisplay(uniqueConsecutiveDays[0])})`;
     }
-
-    const uniqueConsecutiveDays = [...new Set(consecutiveDays)];
-    const currentStreakCount = uniqueConsecutiveDays.length;
-
-    // Format the streak date range
-    const streakDateRange = currentStreakCount > 1
-        ? `(${formatDateForDisplay(uniqueConsecutiveDays[uniqueConsecutiveDays.length - 1])} to ${formatDateForDisplay(uniqueConsecutiveDays[0])})`
-        : `(${formatDateForDisplay(uniqueConsecutiveDays[0])})`;
 
     // Longest streak in the past year calculation
     const oneYearAgo = new Date();
@@ -179,23 +119,4 @@ export function displayData(shootings) {
             </table>
         </div>
     `;
-
-    // Initialize heatmap container
-    const heatmapDiv = document.getElementById('heatmap');
-    heatmapDiv.innerHTML = `
-        <h2>Shooting Incidents Heatmap</h2>
-        <div id="heatmapContainer" style="height: 400px; width: 100%;"></div>
-    `;
-
-    // Store the shootings data for later use
-    window.shootingsData = shootings;
-}
-
-export function initializeMapOnLoad() {
-    window.addEventListener('load', () => {
-        const heatmapTab = document.querySelector('.tab-item[data-tab="heatmap"]');
-        if (heatmapTab) {
-            heatmapTab.click();
-        }
-    });
 }
